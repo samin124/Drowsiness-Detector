@@ -7,7 +7,7 @@ from tensorflow.keras import layers
 from PIL import Image
 import base64
 from io import BytesIO
-import requests
+import gdown  # Use gdown for Google Drive downloads
 
 # Constants
 MODEL_URL = 'https://drive.google.com/uc?id=1i6XhpxCL47hvDWBD35r4sJispzVJogqR'
@@ -17,7 +17,7 @@ CLASS_LABELS = {0: 'Closed Eyes', 1: 'Open Eyes', 2: 'No Yawn', 3: 'Yawn'}
 
 app = Flask(__name__)
 
-# ✅ Correct SE block (must match training-time definition)
+# ✅ SE block function (must match training-time definition)
 def se_block(input_tensor, reduction=8):
     filters = input_tensor.shape[-1]
     se = GlobalAveragePooling2D()(input_tensor)
@@ -27,21 +27,16 @@ def se_block(input_tensor, reduction=8):
     x = layers.Multiply()([input_tensor, se])
     return x
 
-# Download model from Google Drive (render-friendly version)
+# Download model from Google Drive using gdown
 def download_model():
     if not os.path.exists(MODEL_PATH):
-        print("Downloading model...")
-        gdown_url = MODEL_URL
-        response = requests.get(gdown_url, stream=True)
-        with open(MODEL_PATH, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+        print("Downloading model with gdown...")
+        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
         print("Model downloaded.")
     else:
         print("Model already exists.")
 
-# Call download and load model
+# Download and load the model
 download_model()
 model = load_model(MODEL_PATH, custom_objects={'se_block': se_block})
 
@@ -114,6 +109,6 @@ def predict():
     except Exception as e:
         return jsonify({'error': str(e)})
 
-# Start Flask app
+# Start Flask app on Render's recommended host/port
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
